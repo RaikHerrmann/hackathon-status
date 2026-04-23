@@ -1,0 +1,21 @@
+name: hackathon-status
+metadata:
+  template: hackathon-status@0.0.1
+services:
+  web:
+    project: ./src/web
+    dist: .
+    language: js
+    host: staticwebapp
+    hooks:
+      predeploy:
+        shell: sh
+        run: echo "No build step needed for static files"
+  api:
+    project: ./src/api
+    language: js
+    host: staticwebapp
+    linkedHost: web
+infra:
+  provider: bicep
+  path: ./infra

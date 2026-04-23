@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hackathon Status Board</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>🏁 Hackathon Status Board</h1>
+    <nav>
+      <a href="/" class="active">Dashboard</a>
+      <a href="/participant.html">My Status</a>
+      <a href="/admin.html">Admin</a>
+    </nav>
+  </header>
+
+  <div class="container">
+    <div class="card flex-row mb-1">
+      <label><strong>Round:</strong></label>
+      <select id="roundSelect"></select>
+      <span id="countInfo" style="margin-left:auto;color:var(--gray);font-size:.9rem"></span>
+    </div>
+
+    <div id="board" class="grid"></div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    const roundSel = document.getElementById("roundSelect");
+    const board = document.getElementById("board");
+    const countInfo = document.getElementById("countInfo");
+    let refreshTimer;
+
+    async function render() {
+      const roundId = roundSel.value;
+      if (!roundId) { board.innerHTML = "<p>Select a round above.</p>"; return; }
+      try {
+        const participants = await api(`/participants?roundId=${encodeURIComponent(roundId)}`);
+        const done = participants.filter(p => p.status === "done").length;
+        const help = participants.filter(p => p.status === "need-help").length;
+        countInfo.textContent = `${participants.length} total · ${done} done · ${help} need help`;
+
+        if (participants.length === 0) {
+          board.innerHTML = "<p>No participants yet. Add them in the Admin page.</p>";
+          return;
+        }
+        board.innerHTML = participants.map(p => `
+          <div class="status-card status-${p.status}">
+            <div class="status-id">${escapeHtml(p.identifier)}</div>
+            <div class="status-label">${p.status === "need-help" ? "🆘 NEED HELP" : p.status === "done" ? "✅ DONE" : "⏳ Working..."}</div>
+          </div>
+        `).join("");
+      } catch (e) {
+        board.innerHTML = `<p style="color:var(--red)">${escapeHtml(e.message)}</p>`;
+      }
+    }
+
+    function escapeHtml(str) {
+      const d = document.createElement("div");
+      d.textContent = str;
+      return d.innerHTML;
+    }
+
+    roundSel.addEventListener("change", render);
+
+    (async () => {
+      await loadRounds(roundSel, true);
+      if (roundSel.options.length > 1) {
+        roundSel.selectedIndex = 1;
+      }
+      await render();
+      refreshTimer = setInterval(render, 5000);
+    })();
+  </script>
+</body>
+</html>

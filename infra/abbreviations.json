@@ -1,0 +1,7 @@
+{
+  "resourcesResourceGroups": "rg-",
+  "documentDBDatabaseAccounts": "cosmos-",
+  "operationalInsightsWorkspaces": "log-",
+  "insightsComponents": "appi-",
+  "webStaticSites": "swa-"
+}

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Status – Hackathon</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .big-buttons { display: flex; gap: 1.5rem; justify-content: center; margin: 2rem 0; flex-wrap: wrap; }
+    .big-btn {
+      padding: 2rem 3rem; border: none; border-radius: 16px; font-size: 1.4rem;
+      font-weight: 700; cursor: pointer; color: white; min-width: 200px;
+      transition: transform .15s, box-shadow .15s;
+    }
+    .big-btn:hover { transform: scale(1.05); box-shadow: 0 6px 20px rgba(0,0,0,.2); }
+    .big-btn.done { background: var(--green); }
+    .big-btn.help { background: var(--red); }
+    .big-btn.idle { background: var(--gray); }
+    .lookup-form { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
+    .current-status { text-align: center; margin: 1rem 0; font-size: 1.1rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🏁 Hackathon Status Board</h1>
+    <nav>
+      <a href="/">Dashboard</a>
+      <a href="/participant.html" class="active">My Status</a>
+      <a href="/admin.html">Admin</a>
+    </nav>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <h2 style="margin-bottom:1rem">Find Your Entry</h2>
+      <div class="lookup-form">
+        <select id="roundSelect"></select>
+        <input id="lookupInput" type="text" placeholder="Table #, Participant #, or Name">
+        <button class="btn btn-blue" id="lookupBtn">Find Me</button>
+      </div>
+    </div>
+
+    <div id="statusSection" class="card" style="display:none">
+      <div class="current-status">
+        You are: <strong id="currentId"></strong>
+        &nbsp;·&nbsp; Status: <span id="currentStatus"></span>
+      </div>
+      <div class="big-buttons">
+        <button class="big-btn done" id="btnDone">✅ Done</button>
+        <button class="big-btn help" id="btnHelp">🆘 Need Help</button>
+        <button class="big-btn idle" id="btnIdle">⏳ Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    const roundSel = document.getElementById("roundSelect");
+    const lookupInput = document.getElementById("lookupInput");
+    const lookupBtn = document.getElementById("lookupBtn");
+    const statusSection = document.getElementById("statusSection");
+    const currentId = document.getElementById("currentId");
+    const currentStatus = document.getElementById("currentStatus");
+    let found = null;
+
+    function escapeHtml(str) {
+      const d = document.createElement("div");
+      d.textContent = str;
+      return d.innerHTML;
+    }
+
+    function showStatus(p) {
+      found = p;
+      statusSection.style.display = "block";
+      currentId.textContent = p.identifier;
+      currentStatus.innerHTML = statusBadge(p.status);
+    }
+
+    lookupBtn.addEventListener("click", async () => {
+      const roundId = roundSel.value;
+      const term = lookupInput.value.trim();
+      if (!roundId) { toast("Select a round"); return; }
+      if (!term) { toast("Enter your identifier"); return; }
+      try {
+        const list = await api(`/participants?roundId=${encodeURIComponent(roundId)}`);
+        const match = list.find(
+          (p) => p.identifier.toLowerCase() === term.toLowerCase()
+        );
+        if (!match) { toast("Not found — check your identifier"); statusSection.style.display = "none"; return; }
+        showStatus(match);
+      } catch (e) { toast(e.message); }
+    });
+
+    async function setStatus(status) {
+      if (!found) return;
+      try {
+        const updated = await api(`/participants/${found.id}/status`, {
+          method: "PUT",
+          body: JSON.stringify({ status, roundId: found.roundId }),
+        });
+        showStatus(updated);
+        toast("Status updated!");
+      } catch (e) { toast(e.message); }
+    }
+
+    document.getElementById("btnDone").addEventListener("click", () => setStatus("done"));
+    document.getElementById("btnHelp").addEventListener("click", () => setStatus("need-help"));
+    document.getElementById("btnIdle").addEventListener("click", () => setStatus("idle"));
+
+    (async () => {
+      await loadRounds(roundSel, true);
+      if (roundSel.options.length > 1) roundSel.selectedIndex = 1;
+    })();
+  </script>
+</body>
+</html>

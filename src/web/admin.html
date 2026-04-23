@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin – Hackathon</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .section-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+    .inline-form { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+    .danger { color: var(--red); cursor: pointer; background: none; border: none; font-weight: 600; }
+    .danger:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🏁 Hackathon Status Board</h1>
+    <nav>
+      <a href="/">Dashboard</a>
+      <a href="/participant.html">My Status</a>
+      <a href="/admin.html" class="active">Admin</a>
+    </nav>
+  </header>
+
+  <div class="container">
+    <!-- Rounds Management -->
+    <div class="card">
+      <div class="section-title">
+        <h2>Rounds</h2>
+      </div>
+      <div class="inline-form mb-1">
+        <input id="newRoundName" type="text" placeholder="New round name">
+        <button class="btn btn-blue" id="addRoundBtn">Create Round</button>
+      </div>
+      <table>
+        <thead><tr><th>Name</th><th>Created</th><th>Actions</th></tr></thead>
+        <tbody id="roundsBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Participants Management -->
+    <div class="card">
+      <div class="section-title">
+        <h2>Participants</h2>
+      </div>
+      <div class="inline-form mb-1">
+        <label><strong>Round:</strong></label>
+        <select id="roundSelect"></select>
+        <button class="btn btn-gray btn-sm" id="resetAllBtn">Reset All Statuses</button>
+      </div>
+      <div class="inline-form mb-1">
+        <input id="newIdentifier" type="text" placeholder="Identifier (e.g. Table 5)">
+        <select id="newIdType">
+          <option value="table">Table #</option>
+          <option value="participant">Participant #</option>
+          <option value="name">Name</option>
+        </select>
+        <button class="btn btn-blue" id="addParticipantBtn">Add</button>
+      </div>
+      <table>
+        <thead><tr><th>Identifier</th><th>Type</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="participantsBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    const roundSel = document.getElementById("roundSelect");
+    const roundsBody = document.getElementById("roundsBody");
+    const participantsBody = document.getElementById("participantsBody");
+
+    function escapeAttr(str) {
+      return String(str).replace(/&/g,'&amp;').replace(/'/g,'&#39;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function escapeHtml(str) {
+      const d = document.createElement("div");
+      d.textContent = str;
+      return d.innerHTML;
+    }
+
+    // ---- Rounds ----
+    async function refreshRounds() {
+      const rounds = await api("/rounds");
+      roundsBody.innerHTML = rounds.map(r => `
+        <tr>
+          <td>${escapeHtml(r.name)}</td>
+          <td>${new Date(r.createdAt).toLocaleString()}</td>
+          <td>
+            <button class="danger" onclick="deleteRound('${escapeAttr(r.id)}')">Delete</button>
+          </td>
+        </tr>
+      `).join("");
+      // Also refresh the select
+      const currentVal = roundSel.value;
+      await loadRounds(roundSel, true);
+      if (currentVal) roundSel.value = currentVal;
+    }
+
+    document.getElementById("addRoundBtn").addEventListener("click", async () => {
+      const name = document.getElementById("newRoundName").value.trim();
+      if (!name) { toast("Enter a round name"); return; }
+      await api("/rounds", { method: "POST", body: JSON.stringify({ name }) });
+      document.getElementById("newRoundName").value = "";
+      await refreshRounds();
+      toast("Round created");
+    });
+
+    window.deleteRound = async (id) => {
+      if (!confirm("Delete this round and all its participants?")) return;
+      await api(`/rounds/${id}`, { method: "DELETE" });
+      await refreshRounds();
+      await refreshParticipants();
+      toast("Round deleted");
+    };
+
+    // ---- Participants ----
+    async function refreshParticipants() {
+      const roundId = roundSel.value;
+      if (!roundId) { participantsBody.innerHTML = "<tr><td colspan='4'>Select a round</td></tr>"; return; }
+      const list = await api(`/participants?roundId=${encodeURIComponent(roundId)}`);
+      participantsBody.innerHTML = list.map(p => `
+        <tr>
+          <td>${escapeHtml(p.identifier)}</td>
+          <td>${escapeHtml(p.identifierType)}</td>
+          <td>${statusBadge(p.status)}</td>
+          <td>
+            <button class="btn btn-gray btn-sm" onclick="resetStatus('${escapeAttr(p.id)}','${escapeAttr(p.roundId)}')">Reset</button>
+            <button class="danger" onclick="deleteParticipant('${escapeAttr(p.id)}','${escapeAttr(p.roundId)}')">Delete</button>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    roundSel.addEventListener("change", refreshParticipants);
+
+    document.getElementById("addParticipantBtn").addEventListener("click", async () => {
+      const roundId = roundSel.value;
+      if (!roundId) { toast("Select a round first"); return; }
+      const identifier = document.getElementById("newIdentifier").value.trim();
+      const identifierType = document.getElementById("newIdType").value;
+      if (!identifier) { toast("Enter an identifier"); return; }
+      await api("/participants", {
+        method: "POST",
+        body: JSON.stringify({ roundId, identifier, identifierType }),
+      });
+      document.getElementById("newIdentifier").value = "";
+      await refreshParticipants();
+      toast("Participant added");
+    });
+
+    window.resetStatus = async (id, roundId) => {
+      await api(`/participants/${id}/status`, {
+        method: "PUT",
+        body: JSON.stringify({ status: "idle", roundId }),
+      });
+      await refreshParticipants();
+      toast("Status reset");
+    };
+
+    window.deleteParticipant = async (id, roundId) => {
+      if (!confirm("Delete this participant?")) return;
+      await api(`/participants/${id}?roundId=${encodeURIComponent(roundId)}`, { method: "DELETE" });
+      await refreshParticipants();
+      toast("Participant deleted");
+    };
+
+    document.getElementById("resetAllBtn").addEventListener("click", async () => {
+      const roundId = roundSel.value;
+      if (!roundId) { toast("Select a round first"); return; }
+      if (!confirm("Reset all statuses in this round?")) return;
+      const result = await api(`/rounds/${roundId}/reset`, { method: "POST" });
+      await refreshParticipants();
+      toast(`Reset ${result.reset} participants`);
+    });
+
+    (async () => {
+      await refreshRounds();
+      if (roundSel.options.length > 1) roundSel.selectedIndex = 1;
+      await refreshParticipants();
+    })();
+  </script>
+</body>
+</html>
