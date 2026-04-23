@@ -14,9 +14,9 @@ A real-time status board for hackathon events. Participants signal **Done** or *
   - ⚫ Gray = Still working
 - **Participant Page** — Look up your entry by table number, participant number, or name and set your status with large tap-friendly buttons
 - **Admin Page** — Full management for hackathon facilitators:
-  - Create and delete **rounds** (isolated shells per hackathon challenge)
+  - Create and delete **hackathons / events** (isolated containers per hackathon challenge)
   - Add, edit, and delete **participants** (by table #, participant #, or name)
-  - Reset all statuses in a round with one click
+  - Reset all statuses in a hackathon / event with one click
 
 ## Architecture
 
@@ -34,12 +34,13 @@ A real-time status board for hackathon events. Participants signal **Done** or *
 
 | Component | Azure Service | SKU / Tier | Est. Cost |
 |-----------|---------------|------------|-----------|
-| Frontend (3 HTML pages) | Static Web Apps | Free | $0 |
+| Frontend (3 HTML pages) | Static Web Apps | Standard | ~$9/mo |
 | REST API (Node.js 20) | SWA Managed Functions | Included | $0 |
 | Database | Azure Table Storage | Standard LRS (pay-per-use) | ~$0/mo |
 | Monitoring | App Insights + Log Analytics | Pay-per-GB | ~$0/mo |
+| Auth | Managed Identity (Entra ID) | Included | $0 |
 
-**Total estimated cost for ≤100 users: ~$0/month**
+**Total estimated cost for ≤100 users: ~$9/month** (Standard tier required for managed identity; no storage keys used)
 
 ---
 
@@ -79,6 +80,7 @@ A real-time status board for hackathon events. Participants signal **Done** or *
 - **If you push a new commit to `main`**, the GitHub Actions workflow triggers automatically.
 - **To re-run manually:** go to the **Actions** tab → click the latest workflow run → click **"Re-run all jobs"**.
 - Wait ~1–2 minutes. A green checkmark means the app is live at your `swaUrl`.
+- **Note:** The first request may take up to 5 minutes after deployment as Azure propagates the managed identity role assignment.
 
 ### Option 2: Azure Developer CLI
 

@@ -7,7 +7,6 @@ param location string
 @description('Tags')
 param tags object
 
-@secure()
 @description('Storage account name')
 param storageAccountName string
 
