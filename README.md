@@ -104,17 +104,25 @@ npx @azure/static-web-apps-cli start src/web --api-location src/api
 
 The app will be available at `http://localhost:4280`.
 
-For a local Cosmos DB, use the [Azure Cosmos DB Emulator](https://learn.microsoft.com/azure/cosmos-db/local-emulator) and configure `src/api/local.settings.json`:
+---
 
-```json
-{
-  "Values": {
-    "COSMOS_ENDPOINT": "https://localhost:8081",
-    "COSMOS_KEY": "<emulator-key>",
-    "COSMOS_DATABASE": "hackathon"
-  }
-}
-```
+## Accessing the Pages
+
+Once deployed (or running locally), the app has three pages accessible from your Static Web App URL:
+
+| Page | URL | Who uses it |
+|------|-----|-------------|
+| **Dashboard** | `https://<your-swa>.azurestaticapps.net/` | Everyone — shows live status grid |
+| **My Status** | `https://<your-swa>.azurestaticapps.net/participant.html` | Participants — set your status |
+| **Admin** | `https://<your-swa>.azurestaticapps.net/admin.html` | Facilitators — manage rounds & participants |
+
+**Finding your URL after deployment:**
+
+- **One-click deploy**: Go to the Azure Portal → your resource group → Static Web App resource → **Overview** → **URL**
+- **azd**: Run `azd env get-values` and look for `AZURE_SWA_URL`
+- **Local dev**: `http://localhost:4280`
+
+> **Tip:** Share the Dashboard URL on a big screen so everyone can see the status board. Share the Participant URL with hackathon attendees (e.g., via QR code). Keep the Admin URL for facilitators only.
 
 ---
 
