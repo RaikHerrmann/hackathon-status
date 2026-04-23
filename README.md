@@ -2,7 +2,7 @@
 
 A real-time status board for hackathon events. Participants signal **Done** or **Need Help**, and facilitators see everything at a glance on a color-coded dashboard.
 
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FRaikHerrmann%2Fhackathon-status%2Fmain%2Fazuredeploy.json)
+<a href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FRaikHerrmann%2Fhackathon-status%2Fmain%2Fazuredeploy.json" target="_blank"><img src="https://aka.ms/deploytoazurebutton" alt="Deploy to Azure" /></a>
 
 ---
 

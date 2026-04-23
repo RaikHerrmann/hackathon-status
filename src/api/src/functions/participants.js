@@ -1,4 +1,5 @@
 const { app } = require("@azure/functions");
+const { odata } = require("@azure/data-tables");
 const { getParticipantsTable } = require("../storageClient");
 
 const VALID_STATUSES = ["idle", "done", "need-help"];
@@ -26,7 +27,7 @@ app.http("getParticipants", {
     const table = await getParticipantsTable();
     const participants = [];
     const opts = roundId
-      ? { queryOptions: { filter: `PartitionKey eq '${roundId}'` } }
+      ? { queryOptions: { filter: odata`PartitionKey eq ${roundId}` } }
       : {};
     for await (const entity of table.listEntities(opts)) {
       participants.push(toParticipant(entity));

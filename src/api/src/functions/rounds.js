@@ -1,4 +1,5 @@
 const { app } = require("@azure/functions");
+const { odata } = require("@azure/data-tables");
 const { getRoundsTable, getParticipantsTable } = require("../storageClient");
 
 // Helper: convert table entity to API-friendly object
@@ -70,7 +71,7 @@ app.http("deleteRound", {
     const pTable = await getParticipantsTable();
     const toDelete = [];
     for await (const entity of pTable.listEntities({
-      queryOptions: { filter: `PartitionKey eq '${id}'` },
+      queryOptions: { filter: odata`PartitionKey eq ${id}` },
     })) {
       toDelete.push(entity);
     }
@@ -91,7 +92,7 @@ app.http("resetRound", {
     const pTable = await getParticipantsTable();
     let count = 0;
     for await (const entity of pTable.listEntities({
-      queryOptions: { filter: `PartitionKey eq '${roundId}'` },
+      queryOptions: { filter: odata`PartitionKey eq ${roundId}` },
     })) {
       entity.status = "idle";
       await pTable.updateEntity(entity, "Replace");
