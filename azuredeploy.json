@@ -57,7 +57,8 @@
     "swaName": "[concat('swa-', parameters('appName'))]",
     "logAnalyticsName": "[concat('log-', parameters('appName'))]",
     "appInsightsName": "[concat('appi-', parameters('appName'))]",
-    "hasRepo": "[and(not(empty(parameters('repositoryUrl'))), not(empty(parameters('repositoryToken'))))]"
+    "hasRepo": "[and(not(empty(parameters('repositoryUrl'))), not(empty(parameters('repositoryToken'))))]",
+    "storageTableDataContributor": "0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3"
   },
   "resources": [
     {
@@ -134,7 +135,25 @@
         "name": "Free",
         "tier": "Free"
       },
+      "identity": {
+        "type": "SystemAssigned"
+      },
       "properties": "[if(variables('hasRepo'), createObject('repositoryUrl', parameters('repositoryUrl'), 'branch', 'main', 'repositoryToken', parameters('repositoryToken'), 'buildProperties', createObject('appLocation', 'src/web', 'apiLocation', 'src/api', 'outputLocation', '')), createObject())]"
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[concat('Microsoft.Storage/storageAccounts/', variables('storageName'))]",
+      "name": "[guid(resourceId('Microsoft.Web/staticSites', variables('swaName')), variables('storageTableDataContributor'), resourceId('Microsoft.Storage/storageAccounts', variables('storageName')))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/staticSites', variables('swaName'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageName'))]"
+      ],
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('storageTableDataContributor'))]",
+        "principalId": "[reference(resourceId('Microsoft.Web/staticSites', variables('swaName')), '2023-12-01', 'Full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      }
     },
     {
       "type": "Microsoft.Web/staticSites/config",
@@ -146,7 +165,7 @@
         "[resourceId('Microsoft.Insights/components', variables('appInsightsName'))]"
       ],
       "properties": {
-        "STORAGE_CONNECTION_STRING": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageName'), ';AccountKey=', listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageName')), '2023-05-01').keys[0].value, ';EndpointSuffix=core.windows.net')]",
+        "STORAGE_ACCOUNT_NAME": "[variables('storageName')]",
         "APPINSIGHTS_CONNECTION_STRING": "[reference(resourceId('Microsoft.Insights/components', variables('appInsightsName'))).ConnectionString]"
       }
     }

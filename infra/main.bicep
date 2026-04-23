@@ -47,7 +47,8 @@ module swa './modules/staticwebapp.bicep' = {
     name: '${abbrs.webStaticSites}${resourceToken}'
     location: 'eastus2'
     tags: tags
-    storageConnectionString: storage.outputs.connectionString
+    storageAccountName: storage.outputs.accountName
+    storageAccountId: storage.outputs.accountId
     appInsightsConnectionString: monitoring.outputs.appInsightsConnectionString
   }
 }

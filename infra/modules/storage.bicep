@@ -38,4 +38,4 @@ resource participantsTable 'Microsoft.Storage/storageAccounts/tableServices/tabl
 }
 
 output accountName string = storageAccount.name
-output connectionString string = 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};AccountKey=${storageAccount.listKeys().keys[0].value};EndpointSuffix=core.windows.net'
+output accountId string = storageAccount.id
