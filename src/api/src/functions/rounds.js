@@ -17,15 +17,38 @@ app.http("getRounds", {
   authLevel: "anonymous",
   route: "rounds",
   handler: async (request, context) => {
-    const table = await getRoundsTable();
-    const rounds = [];
-    for await (const entity of table.listEntities({
-      queryOptions: { filter: "PartitionKey eq 'round'" },
-    })) {
-      rounds.push(toRound(entity));
+    try {
+      const table = getRoundsTable();
+      const rounds = [];
+      for await (const entity of table.listEntities({
+        queryOptions: { filter: "PartitionKey eq 'round'" },
+      })) {
+        rounds.push(toRound(entity));
+      }
+      rounds.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      return { jsonBody: rounds };
+    } catch (e) {
+      return { status: 500, jsonBody: { error: e.message, stack: e.stack } };
     }
-    rounds.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    return { jsonBody: rounds };
+  },
+});
+
+// GET /api/health — simple health check (no storage)
+app.http("health", {
+  methods: ["GET"],
+  authLevel: "anonymous",
+  route: "health",
+  handler: async (request, context) => {
+    return {
+      jsonBody: {
+        status: "ok",
+        env: {
+          STORAGE_ACCOUNT_NAME: process.env.STORAGE_ACCOUNT_NAME ? "set" : "NOT SET",
+          IDENTITY_ENDPOINT: process.env.IDENTITY_ENDPOINT ? "set" : "NOT SET",
+          MSI_SECRET: process.env.MSI_SECRET ? "set" : "NOT SET",
+        },
+      },
+    };
   },
 });
 
