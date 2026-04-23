@@ -22,8 +22,8 @@ A real-time status board for hackathon events. Participants signal **Done** or *
 
 ```
 ┌──────────────┐     ┌──────────────────────────┐     ┌──────────────────┐
-│   Browser    │────▶│  Azure Static Web Apps    │────▶│  Cosmos DB       │
-│  (3 pages)   │     │  + Managed Functions API  │     │  (Serverless)    │
+│   Browser    │────▶│  Azure Static Web Apps    │────▶│  Azure Table     │
+│  (3 pages)   │     │  + Managed Functions API  │     │  Storage         │
 └──────────────┘     └──────────────────────────┘     └──────────────────┘
                               │
                      ┌────────▼─────────┐
@@ -36,7 +36,7 @@ A real-time status board for hackathon events. Participants signal **Done** or *
 |-----------|---------------|------------|-----------|
 | Frontend (3 HTML pages) | Static Web Apps | Free | $0 |
 | REST API (Node.js 20) | SWA Managed Functions | Included | $0 |
-| Database | Cosmos DB | Serverless (pay-per-request) | ~$0–1/mo |
+| Database | Azure Table Storage | Standard LRS (pay-per-use) | ~$0/mo |
 | Monitoring | App Insights + Log Analytics | Pay-per-GB | ~$0/mo |
 
 **Total estimated cost for ≤100 users: ~$0/month**
@@ -179,7 +179,7 @@ hackathon-status/
 │   ├── main.bicep
 │   ├── abbreviations.json
 │   └── modules/
-│       ├── cosmos.bicep
+│       ├── storage.bicep
 │       ├── monitoring.bicep
 │       └── staticwebapp.bicep
 └── src/
@@ -187,7 +187,7 @@ hackathon-status/
     │   ├── host.json
     │   ├── package.json
     │   └── src/
-    │       ├── cosmosClient.js
+    │       ├── storageClient.js
     │       └── functions/
     │           ├── rounds.js
     │           └── participants.js

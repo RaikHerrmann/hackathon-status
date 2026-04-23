@@ -1,8 +1,20 @@
 const { app } = require("@azure/functions");
-const { getParticipantsContainer } = require("../cosmosClient");
+const { getParticipantsTable } = require("../storageClient");
 
 const VALID_STATUSES = ["idle", "done", "need-help"];
 const VALID_ID_TYPES = ["table", "participant", "name"];
+
+// Helper: convert table entity to API-friendly object
+function toParticipant(entity) {
+  return {
+    id: entity.rowKey,
+    roundId: entity.partitionKey,
+    identifier: entity.identifier,
+    identifierType: entity.identifierType,
+    status: entity.status,
+    updatedAt: entity.updatedAt,
+  };
+}
 
 // GET /api/participants?roundId=xxx — list participants for a round
 app.http("getParticipants", {
@@ -11,18 +23,16 @@ app.http("getParticipants", {
   route: "participants",
   handler: async (request, context) => {
     const roundId = request.query.get("roundId");
-    const container = await getParticipantsContainer();
-    let query;
-    if (roundId) {
-      query = {
-        query: "SELECT * FROM c WHERE c.roundId = @roundId ORDER BY c.identifier",
-        parameters: [{ name: "@roundId", value: roundId }],
-      };
-    } else {
-      query = "SELECT * FROM c ORDER BY c.identifier";
+    const table = await getParticipantsTable();
+    const participants = [];
+    const opts = roundId
+      ? { queryOptions: { filter: `PartitionKey eq '${roundId}'` } }
+      : {};
+    for await (const entity of table.listEntities(opts)) {
+      participants.push(toParticipant(entity));
     }
-    const { resources } = await container.items.query(query).fetchAll();
-    return { jsonBody: resources };
+    participants.sort((a, b) => a.identifier.localeCompare(b.identifier));
+    return { jsonBody: participants };
   },
 });
 
@@ -45,17 +55,17 @@ app.http("createParticipant", {
         jsonBody: { error: `identifierType must be one of: ${VALID_ID_TYPES.join(", ")}` },
       };
     }
-    const container = await getParticipantsContainer();
-    const participant = {
-      id: crypto.randomUUID(),
-      roundId: body.roundId,
+    const table = await getParticipantsTable();
+    const entity = {
+      partitionKey: body.roundId,
+      rowKey: crypto.randomUUID(),
       identifier: String(body.identifier).trim().substring(0, 200),
       identifierType: body.identifierType,
       status: "idle",
       updatedAt: new Date().toISOString(),
     };
-    const { resource } = await container.items.create(participant);
-    return { status: 201, jsonBody: resource };
+    await table.createEntity(entity);
+    return { status: 201, jsonBody: toParticipant(entity) };
   },
 });
 
@@ -70,13 +80,12 @@ app.http("updateParticipant", {
     if (!body.roundId) {
       return { status: 400, jsonBody: { error: "roundId is required" } };
     }
-    const container = await getParticipantsContainer();
+    const table = await getParticipantsTable();
     let existing;
     try {
-      const { resource } = await container.item(id, body.roundId).read();
-      existing = resource;
+      existing = await table.getEntity(body.roundId, id);
     } catch (e) {
-      if (e.code === 404) {
+      if (e.statusCode === 404) {
         return { status: 404, jsonBody: { error: "Participant not found" } };
       }
       throw e;
@@ -91,8 +100,8 @@ app.http("updateParticipant", {
       existing.status = body.status;
     }
     existing.updatedAt = new Date().toISOString();
-    const { resource: updated } = await container.item(id, body.roundId).replace(existing);
-    return { jsonBody: updated };
+    await table.updateEntity(existing, "Replace");
+    return { jsonBody: toParticipant(existing) };
   },
 });
 
@@ -107,11 +116,11 @@ app.http("deleteParticipant", {
     if (!roundId) {
       return { status: 400, jsonBody: { error: "roundId query param is required" } };
     }
-    const container = await getParticipantsContainer();
+    const table = await getParticipantsTable();
     try {
-      await container.item(id, roundId).delete();
+      await table.deleteEntity(roundId, id);
     } catch (e) {
-      if (e.code === 404) {
+      if (e.statusCode === 404) {
         return { status: 404, jsonBody: { error: "Participant not found" } };
       }
       throw e;
@@ -137,20 +146,19 @@ app.http("updateParticipantStatus", {
     if (!body.roundId) {
       return { status: 400, jsonBody: { error: "roundId is required" } };
     }
-    const container = await getParticipantsContainer();
+    const table = await getParticipantsTable();
     let existing;
     try {
-      const { resource } = await container.item(id, body.roundId).read();
-      existing = resource;
+      existing = await table.getEntity(body.roundId, id);
     } catch (e) {
-      if (e.code === 404) {
+      if (e.statusCode === 404) {
         return { status: 404, jsonBody: { error: "Participant not found" } };
       }
       throw e;
     }
     existing.status = body.status;
     existing.updatedAt = new Date().toISOString();
-    const { resource: updated } = await container.item(id, body.roundId).replace(existing);
-    return { jsonBody: updated };
+    await table.updateEntity(existing, "Replace");
+    return { jsonBody: toParticipant(existing) };
   },
 });

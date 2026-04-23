@@ -4,23 +4,23 @@
   "metadata": {
     "_generator": {
       "name": "hackathon-status",
-      "version": "1.0.0"
+      "version": "2.0.0"
     }
   },
   "parameters": {
     "appName": {
       "type": "string",
-      "defaultValue": "[concat('hackstatus-', uniqueString(resourceGroup().id))]",
+      "defaultValue": "[concat('hackstatus', uniqueString(resourceGroup().id))]",
       "metadata": {
         "description": "Base name for all resources (auto-generated if empty)"
       },
-      "maxLength": 40
+      "maxLength": 24
     },
     "location": {
       "type": "string",
       "defaultValue": "[resourceGroup().location]",
       "metadata": {
-        "description": "Location for Cosmos DB and monitoring resources"
+        "description": "Location for Storage and monitoring resources"
       }
     },
     "swaLocation": {
@@ -53,83 +53,51 @@
     }
   },
   "variables": {
-    "cosmosName": "[concat('cosmos-', parameters('appName'))]",
+    "storageName": "[toLower(replace(parameters('appName'), '-', ''))]",
     "swaName": "[concat('swa-', parameters('appName'))]",
     "logAnalyticsName": "[concat('log-', parameters('appName'))]",
     "appInsightsName": "[concat('appi-', parameters('appName'))]",
-    "databaseName": "hackathon",
     "hasRepo": "[and(not(empty(parameters('repositoryUrl'))), not(empty(parameters('repositoryToken'))))]"
   },
   "resources": [
     {
-      "type": "Microsoft.DocumentDB/databaseAccounts",
-      "apiVersion": "2024-02-15-preview",
-      "name": "[variables('cosmosName')]",
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2023-05-01",
+      "name": "[variables('storageName')]",
       "location": "[parameters('location')]",
-      "kind": "GlobalDocumentDB",
+      "kind": "StorageV2",
+      "sku": {
+        "name": "Standard_LRS"
+      },
       "properties": {
-        "databaseAccountOfferType": "Standard",
-        "locations": [
-          {
-            "locationName": "[parameters('location')]",
-            "failoverPriority": 0,
-            "isZoneRedundant": false
-          }
-        ],
-        "capabilities": [
-          { "name": "EnableServerless" }
-        ],
-        "consistencyPolicy": {
-          "defaultConsistencyLevel": "Session"
-        }
+        "minimumTlsVersion": "TLS1_2",
+        "supportsHttpsTrafficOnly": true,
+        "allowBlobPublicAccess": false
       }
     },
     {
-      "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases",
-      "apiVersion": "2024-02-15-preview",
-      "name": "[concat(variables('cosmosName'), '/', variables('databaseName'))]",
+      "type": "Microsoft.Storage/storageAccounts/tableServices",
+      "apiVersion": "2023-05-01",
+      "name": "[concat(variables('storageName'), '/default')]",
       "dependsOn": [
-        "[resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosName'))]"
-      ],
-      "properties": {
-        "resource": {
-          "id": "[variables('databaseName')]"
-        }
-      }
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageName'))]"
+      ]
     },
     {
-      "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
-      "apiVersion": "2024-02-15-preview",
-      "name": "[concat(variables('cosmosName'), '/', variables('databaseName'), '/rounds')]",
+      "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
+      "apiVersion": "2023-05-01",
+      "name": "[concat(variables('storageName'), '/default/rounds')]",
       "dependsOn": [
-        "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases', variables('cosmosName'), variables('databaseName'))]"
-      ],
-      "properties": {
-        "resource": {
-          "id": "rounds",
-          "partitionKey": {
-            "paths": ["/id"],
-            "kind": "Hash"
-          }
-        }
-      }
+        "[resourceId('Microsoft.Storage/storageAccounts/tableServices', variables('storageName'), 'default')]"
+      ]
     },
     {
-      "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
-      "apiVersion": "2024-02-15-preview",
-      "name": "[concat(variables('cosmosName'), '/', variables('databaseName'), '/participants')]",
+      "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
+      "apiVersion": "2023-05-01",
+      "name": "[concat(variables('storageName'), '/default/participants')]",
       "dependsOn": [
-        "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases', variables('cosmosName'), variables('databaseName'))]"
-      ],
-      "properties": {
-        "resource": {
-          "id": "participants",
-          "partitionKey": {
-            "paths": ["/roundId"],
-            "kind": "Hash"
-          }
-        }
-      }
+        "[resourceId('Microsoft.Storage/storageAccounts/tableServices', variables('storageName'), 'default')]"
+      ]
     },
     {
       "type": "Microsoft.OperationalInsights/workspaces",
@@ -174,13 +142,11 @@
       "name": "[concat(variables('swaName'), '/appsettings')]",
       "dependsOn": [
         "[resourceId('Microsoft.Web/staticSites', variables('swaName'))]",
-        "[resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosName'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageName'))]",
         "[resourceId('Microsoft.Insights/components', variables('appInsightsName'))]"
       ],
       "properties": {
-        "COSMOS_ENDPOINT": "[reference(resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosName'))).documentEndpoint]",
-        "COSMOS_KEY": "[listKeys(resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosName')), '2024-02-15-preview').primaryMasterKey]",
-        "COSMOS_DATABASE": "[variables('databaseName')]",
+        "STORAGE_CONNECTION_STRING": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageName'), ';AccountKey=', listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageName')), '2023-05-01').keys[0].value, ';EndpointSuffix=core.windows.net')]",
         "APPINSIGHTS_CONNECTION_STRING": "[reference(resourceId('Microsoft.Insights/components', variables('appInsightsName'))).ConnectionString]"
       }
     }
@@ -193,10 +159,6 @@
     "swaName": {
       "type": "string",
       "value": "[variables('swaName')]"
-    },
-    "cosmosEndpoint": {
-      "type": "string",
-      "value": "[reference(resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosName'))).documentEndpoint]"
     }
   }
 }

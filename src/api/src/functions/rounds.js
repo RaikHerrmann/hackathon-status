@@ -1,5 +1,14 @@
 const { app } = require("@azure/functions");
-const { getRoundsContainer } = require("../cosmosClient");
+const { getRoundsTable, getParticipantsTable } = require("../storageClient");
+
+// Helper: convert table entity to API-friendly object
+function toRound(entity) {
+  return {
+    id: entity.rowKey,
+    name: entity.name,
+    createdAt: entity.createdAt,
+  };
+}
 
 // GET /api/rounds — list all rounds
 app.http("getRounds", {
@@ -7,11 +16,15 @@ app.http("getRounds", {
   authLevel: "anonymous",
   route: "rounds",
   handler: async (request, context) => {
-    const container = await getRoundsContainer();
-    const { resources } = await container.items
-      .query("SELECT * FROM c ORDER BY c.createdAt DESC")
-      .fetchAll();
-    return { jsonBody: resources };
+    const table = await getRoundsTable();
+    const rounds = [];
+    for await (const entity of table.listEntities({
+      queryOptions: { filter: "PartitionKey eq 'round'" },
+    })) {
+      rounds.push(toRound(entity));
+    }
+    rounds.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return { jsonBody: rounds };
   },
 });
 
@@ -25,14 +38,15 @@ app.http("createRound", {
     if (!body.name || typeof body.name !== "string" || body.name.trim().length === 0) {
       return { status: 400, jsonBody: { error: "name is required" } };
     }
-    const container = await getRoundsContainer();
+    const table = await getRoundsTable();
     const round = {
-      id: crypto.randomUUID(),
+      partitionKey: "round",
+      rowKey: crypto.randomUUID(),
       name: body.name.trim().substring(0, 200),
       createdAt: new Date().toISOString(),
     };
-    const { resource } = await container.items.create(round);
-    return { status: 201, jsonBody: resource };
+    await table.createEntity(round);
+    return { status: 201, jsonBody: toRound(round) };
   },
 });
 
@@ -43,26 +57,25 @@ app.http("deleteRound", {
   route: "rounds/{id}",
   handler: async (request, context) => {
     const id = request.params.id;
-    const container = await getRoundsContainer();
+    const table = await getRoundsTable();
     try {
-      await container.item(id, id).delete();
+      await table.deleteEntity("round", id);
     } catch (e) {
-      if (e.code === 404) {
+      if (e.statusCode === 404) {
         return { status: 404, jsonBody: { error: "Round not found" } };
       }
       throw e;
     }
     // Delete all participants in this round
-    const { getParticipantsContainer } = require("../cosmosClient");
-    const pContainer = await getParticipantsContainer();
-    const { resources: participants } = await pContainer.items
-      .query({
-        query: "SELECT c.id, c.roundId FROM c WHERE c.roundId = @roundId",
-        parameters: [{ name: "@roundId", value: id }],
-      })
-      .fetchAll();
-    for (const p of participants) {
-      await pContainer.item(p.id, p.roundId).delete();
+    const pTable = await getParticipantsTable();
+    const toDelete = [];
+    for await (const entity of pTable.listEntities({
+      queryOptions: { filter: `PartitionKey eq '${id}'` },
+    })) {
+      toDelete.push(entity);
+    }
+    for (const p of toDelete) {
+      await pTable.deleteEntity(p.partitionKey, p.rowKey);
     }
     return { status: 204 };
   },
@@ -75,18 +88,15 @@ app.http("resetRound", {
   route: "rounds/{id}/reset",
   handler: async (request, context) => {
     const roundId = request.params.id;
-    const { getParticipantsContainer } = require("../cosmosClient");
-    const container = await getParticipantsContainer();
-    const { resources: participants } = await container.items
-      .query({
-        query: "SELECT * FROM c WHERE c.roundId = @roundId",
-        parameters: [{ name: "@roundId", value: roundId }],
-      })
-      .fetchAll();
-    for (const p of participants) {
-      p.status = "idle";
-      await container.item(p.id, p.roundId).replace(p);
+    const pTable = await getParticipantsTable();
+    let count = 0;
+    for await (const entity of pTable.listEntities({
+      queryOptions: { filter: `PartitionKey eq '${roundId}'` },
+    })) {
+      entity.status = "idle";
+      await pTable.updateEntity(entity, "Replace");
+      count++;
     }
-    return { jsonBody: { reset: participants.length } };
+    return { jsonBody: { reset: count } };
   },
 });

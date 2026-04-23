@@ -19,14 +19,13 @@ resource rg 'Microsoft.Resources/resourceGroups@2022-09-01' = {
   tags: tags
 }
 
-module cosmos './modules/cosmos.bicep' = {
-  name: 'cosmos'
+module storage './modules/storage.bicep' = {
+  name: 'storage'
   scope: rg
   params: {
-    name: '${abbrs.documentDBDatabaseAccounts}${resourceToken}'
+    name: '${abbrs.storageAccounts}${resourceToken}'
     location: location
     tags: tags
-    databaseName: 'hackathon'
   }
 }
 
@@ -48,8 +47,7 @@ module swa './modules/staticwebapp.bicep' = {
     name: '${abbrs.webStaticSites}${resourceToken}'
     location: 'eastus2'
     tags: tags
-    cosmosAccountName: cosmos.outputs.accountName
-    cosmosEndpoint: cosmos.outputs.endpoint
+    storageConnectionString: storage.outputs.connectionString
     appInsightsConnectionString: monitoring.outputs.appInsightsConnectionString
   }
 }

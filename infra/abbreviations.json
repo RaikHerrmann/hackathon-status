@@ -1,6 +1,6 @@
 {
   "resourcesResourceGroups": "rg-",
-  "documentDBDatabaseAccounts": "cosmos-",
+  "storageAccounts": "st",
   "operationalInsightsWorkspaces": "log-",
   "insightsComponents": "appi-",
   "webStaticSites": "swa-"
