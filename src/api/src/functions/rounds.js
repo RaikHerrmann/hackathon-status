@@ -45,6 +45,8 @@ app.http("health", {
         env: {
           STORAGE_ACCOUNT_NAME: process.env.STORAGE_ACCOUNT_NAME ? "set" : "NOT SET",
           IDENTITY_ENDPOINT: process.env.IDENTITY_ENDPOINT ? "set" : "NOT SET",
+          IDENTITY_HEADER: process.env.IDENTITY_HEADER ? "set" : "NOT SET",
+          MSI_ENDPOINT: process.env.MSI_ENDPOINT ? "set" : "NOT SET",
           MSI_SECRET: process.env.MSI_SECRET ? "set" : "NOT SET",
         },
       },
