@@ -2,7 +2,7 @@
   "name": "hackathon-status-api",
   "version": "1.0.0",
   "description": "API for Hackathon Status Board",
-  "main": "src/functions/*.js",
+  "main": "src/functions/rounds.js",
   "scripts": {
     "start": "func start",
     "test": "echo \"No tests yet\""
