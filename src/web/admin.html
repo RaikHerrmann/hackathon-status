@@ -10,6 +10,8 @@
     .inline-form { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
     .danger { color: var(--red); cursor: pointer; background: none; border: none; font-weight: 600; }
     .danger:hover { text-decoration: underline; }
+    .error-banner { background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; white-space: pre-wrap; word-break: break-word; display: none; }
+    .error-banner .close-btn { float: right; cursor: pointer; font-weight: bold; background: none; border: none; color: #991b1b; font-size: 1.2rem; }
   </style>
 </head>
 <body>
@@ -23,7 +25,12 @@
   </header>
 
   <div class="container">
-    <!-- Rounds Management -->
+    <div id="errorBanner" class="error-banner">
+      <button class="close-btn" onclick="document.getElementById('errorBanner').style.display='none'">&times;</button>
+      <strong>Error:</strong> <span id="errorText"></span>
+    </div>
+
+    <!-- Hackathon / Event Management -->
     <div class="card">
       <div class="section-title">
         <h2>Hackathon / Event Name</h2>
@@ -70,6 +77,15 @@
     const roundsBody = document.getElementById("roundsBody");
     const participantsBody = document.getElementById("participantsBody");
 
+    function showError(msg) {
+      const banner = document.getElementById("errorBanner");
+      document.getElementById("errorText").textContent = msg;
+      banner.style.display = "block";
+    }
+    function hideError() {
+      document.getElementById("errorBanner").style.display = "none";
+    }
+
     function escapeAttr(str) {
       return String(str).replace(/&/g,'&amp;').replace(/'/g,'&#39;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
@@ -82,20 +98,24 @@
 
     // ---- Rounds ----
     async function refreshRounds() {
-      const rounds = await api("/rounds");
-      roundsBody.innerHTML = rounds.map(r => `
-        <tr>
-          <td>${escapeHtml(r.name)}</td>
-          <td>${new Date(r.createdAt).toLocaleString()}</td>
-          <td>
-            <button class="danger" onclick="deleteRound('${escapeAttr(r.id)}')">Delete</button>
-          </td>
-        </tr>
-      `).join("");
-      // Also refresh the select
-      const currentVal = roundSel.value;
-      await loadRounds(roundSel, true);
-      if (currentVal) roundSel.value = currentVal;
+      try {
+        const rounds = await api("/rounds");
+        roundsBody.innerHTML = rounds.map(r => `
+          <tr>
+            <td>${escapeHtml(r.name)}</td>
+            <td>${new Date(r.createdAt).toLocaleString()}</td>
+            <td>
+              <button class="danger" onclick="deleteRound('${escapeAttr(r.id)}')">Delete</button>
+            </td>
+          </tr>
+        `).join("");
+        // Also refresh the select
+        const currentVal = roundSel.value;
+        await loadRounds(roundSel, true);
+        if (currentVal) roundSel.value = currentVal;
+      } catch (e) {
+        showError("Failed to load hackathons/events: " + e.message);
+      }
     }
 
     document.getElementById("addRoundBtn").addEventListener("click", async () => {
@@ -106,8 +126,9 @@
         document.getElementById("newRoundName").value = "";
         await refreshRounds();
         toast("Hackathon / Event created");
+        hideError();
       } catch (e) {
-        toast("Error: " + e.message);
+        showError(e.message);
       }
     });
 
@@ -118,8 +139,9 @@
         await refreshRounds();
         await refreshParticipants();
         toast("Hackathon / Event deleted");
+        hideError();
       } catch (e) {
-        toast("Error: " + e.message);
+        showError(e.message);
       }
     };
 

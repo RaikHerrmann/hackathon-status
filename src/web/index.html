@@ -18,7 +18,7 @@
 
   <div class="container">
     <div class="card flex-row mb-1">
-      <label><strong>Round:</strong></label>
+      <label><strong>Hackathon / Event:</strong></label>
       <select id="roundSelect"></select>
       <span id="countInfo" style="margin-left:auto;color:var(--gray);font-size:.9rem"></span>
     </div>
@@ -35,7 +35,7 @@
 
     async function render() {
       const roundId = roundSel.value;
-      if (!roundId) { board.innerHTML = "<p>Select a round above.</p>"; return; }
+      if (!roundId) { board.innerHTML = "<p>Select a hackathon / event above.</p>"; return; }
       try {
         const participants = await api(`/participants?roundId=${encodeURIComponent(roundId)}`);
         const done = participants.filter(p => p.status === "done").length;

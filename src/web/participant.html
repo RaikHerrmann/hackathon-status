@@ -79,7 +79,7 @@
     lookupBtn.addEventListener("click", async () => {
       const roundId = roundSel.value;
       const term = lookupInput.value.trim();
-      if (!roundId) { toast("Select a round"); return; }
+      if (!roundId) { toast("Select a hackathon / event"); return; }
       if (!term) { toast("Enter your identifier"); return; }
       try {
         const list = await api(`/participants?roundId=${encodeURIComponent(roundId)}`);
