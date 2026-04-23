@@ -8,7 +8,14 @@ async function api(path, opts = {}) {
     ...opts,
   });
   if (res.status === 204) return null;
-  const data = await res.json();
+  const text = await res.text();
+  let data;
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    if (!res.ok) throw new Error(`Server error ${res.status}: ${text.substring(0, 200)}`);
+    throw new Error("Invalid JSON response from server");
+  }
   if (!res.ok) throw new Error(data.error || res.statusText);
   return data;
 }
