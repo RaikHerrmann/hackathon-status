@@ -10,8 +10,5 @@
   "dependencies": {
     "@azure/data-tables": "^13.3.0",
     "@azure/functions": "^4.6.0"
-  },
-  "devDependencies": {
-    "azure-functions-core-tools": "^4.x"
   }
 }
