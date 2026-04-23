@@ -33,24 +33,35 @@ app.http("getRounds", {
   },
 });
 
-// GET /api/health — simple health check (no storage)
+// GET /api/health — simple health check + identity endpoint probe
 app.http("health", {
   methods: ["GET"],
   authLevel: "anonymous",
   route: "health",
   handler: async (request, context) => {
-    return {
-      jsonBody: {
-        status: "ok",
-        env: {
-          STORAGE_ACCOUNT_NAME: process.env.STORAGE_ACCOUNT_NAME ? "set" : "NOT SET",
-          IDENTITY_ENDPOINT: process.env.IDENTITY_ENDPOINT ? "set" : "NOT SET",
-          IDENTITY_HEADER: process.env.IDENTITY_HEADER ? "set" : "NOT SET",
-          MSI_ENDPOINT: process.env.MSI_ENDPOINT ? "set" : "NOT SET",
-          MSI_SECRET: process.env.MSI_SECRET ? "set" : "NOT SET",
-        },
+    const result = {
+      status: "ok",
+      env: {
+        STORAGE_ACCOUNT_NAME: process.env.STORAGE_ACCOUNT_NAME ? "set" : "NOT SET",
+        IDENTITY_ENDPOINT: process.env.IDENTITY_ENDPOINT ? "set" : "NOT SET",
+        IDENTITY_HEADER: process.env.IDENTITY_HEADER ? "set" : "NOT SET",
+        MSI_ENDPOINT: process.env.MSI_ENDPOINT ? "set" : "NOT SET",
+        MSI_SECRET: process.env.MSI_SECRET ? "set" : "NOT SET",
       },
     };
+    // Probe the identity endpoint
+    const ep = process.env.IDENTITY_ENDPOINT || process.env.MSI_ENDPOINT;
+    if (ep) {
+      try {
+        const resource = "https://storage.azure.com";
+        const url = `${ep}?resource=${encodeURIComponent(resource)}&api-version=2019-08-01`;
+        const res = await fetch(url);
+        result.probe = { status: res.status, body: await res.text() };
+      } catch (e) {
+        result.probe = { error: e.message };
+      }
+    }
+    return { jsonBody: result };
   },
 });
 
