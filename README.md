@@ -47,16 +47,38 @@ A real-time status board for hackathon events. Participants signal **Done** or *
 
 ### Option 1: One-Click Deploy (recommended)
 
+#### 1. Create the Azure resources
+
 1. Click the **Deploy to Azure** button above
 2. Select your subscription, create or pick a resource group, choose a region
 3. Click **Review + create** → **Create**
 4. After deployment completes, go to the **Outputs** tab to find your `swaUrl`
-5. Connect your GitHub repo to the SWA for automatic deploys:
-   - In the Azure portal, open your Static Web App resource
-   - Go to **Deployment** → **Manage deployment token**, copy the token
-   - In your GitHub repo, go to **Settings** → **Secrets** → **Actions**
-   - Add a secret named `AZURE_STATIC_WEB_APPS_API_TOKEN` with the token value
-   - Push to `main` — the GitHub Action will deploy your app automatically
+
+#### 2. Get the deployment token from Azure
+
+1. In the [Azure portal](https://portal.azure.com), type **"Static Web Apps"** in the top search bar and click the service
+2. Click on your Static Web App (named something like `swa-hackstatus...`)
+3. On the **Overview** page (the default page that opens), look for **"Manage deployment token"** in the top command bar
+4. A panel opens showing the token — click the **copy icon** next to it
+
+> **Tip:** If you don't see "Manage deployment token" in the toolbar, try the left sidebar → **Settings** → **Deployment token** (the name varies by portal version).
+
+#### 3. Add the token as a GitHub secret
+
+1. In your GitHub repo, click the **Settings** tab (far right of the repo tabs: `Code`, `Issues`, `Pull requests`, `Actions`, ... `Settings`)
+2. In the left sidebar, find the **Security** section → expand **"Secrets and variables"** → click **"Actions"**
+3. Click **"New repository secret"**
+4. **Name:** `AZURE_STATIC_WEB_APPS_API_TOKEN` (exact, all caps with underscores)
+5. **Secret:** paste the deployment token you copied from Azure
+6. Click **"Add secret"**
+
+> **Can't find Settings?** Make sure you are logged into GitHub as the **owner** of the repo (or have admin permissions). The Settings tab is only visible to repo admins. You can also use the direct link: `https://github.com/<your-user>/<your-repo>/settings/secrets/actions`
+
+#### 4. Trigger the deployment
+
+- **If you push a new commit to `main`**, the GitHub Actions workflow triggers automatically.
+- **To re-run manually:** go to the **Actions** tab → click the latest workflow run → click **"Re-run all jobs"**.
+- Wait ~1–2 minutes. A green checkmark means the app is live at your `swaUrl`.
 
 ### Option 2: Azure Developer CLI
 
