@@ -39,7 +39,7 @@ async function loadRounds(selectEl, includeAll) {
   if (includeAll) {
     const opt = document.createElement("option");
     opt.value = "";
-    opt.textContent = "-- Select Round --";
+    opt.textContent = "-- Select Hackathon / Event --";
     selectEl.appendChild(opt);
   }
   rounds.forEach((r) => {

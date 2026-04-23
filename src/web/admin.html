@@ -26,11 +26,11 @@
     <!-- Rounds Management -->
     <div class="card">
       <div class="section-title">
-        <h2>Rounds</h2>
+        <h2>Hackathon / Event Name</h2>
       </div>
       <div class="inline-form mb-1">
-        <input id="newRoundName" type="text" placeholder="New round name">
-        <button class="btn btn-blue" id="addRoundBtn">Create Round</button>
+        <input id="newRoundName" type="text" placeholder="e.g. Spring Hackathon 2026">
+        <button class="btn btn-blue" id="addRoundBtn">Create Hackathon / Event</button>
       </div>
       <table>
         <thead><tr><th>Name</th><th>Created</th><th>Actions</th></tr></thead>
@@ -44,7 +44,7 @@
         <h2>Participants</h2>
       </div>
       <div class="inline-form mb-1">
-        <label><strong>Round:</strong></label>
+        <label><strong>Hackathon / Event:</strong></label>
         <select id="roundSelect"></select>
         <button class="btn btn-gray btn-sm" id="resetAllBtn">Reset All Statuses</button>
       </div>
@@ -100,25 +100,33 @@
 
     document.getElementById("addRoundBtn").addEventListener("click", async () => {
       const name = document.getElementById("newRoundName").value.trim();
-      if (!name) { toast("Enter a round name"); return; }
-      await api("/rounds", { method: "POST", body: JSON.stringify({ name }) });
-      document.getElementById("newRoundName").value = "";
-      await refreshRounds();
-      toast("Round created");
+      if (!name) { toast("Enter a hackathon / event name"); return; }
+      try {
+        await api("/rounds", { method: "POST", body: JSON.stringify({ name }) });
+        document.getElementById("newRoundName").value = "";
+        await refreshRounds();
+        toast("Hackathon / Event created");
+      } catch (e) {
+        toast("Error: " + e.message);
+      }
     });
 
     window.deleteRound = async (id) => {
-      if (!confirm("Delete this round and all its participants?")) return;
-      await api(`/rounds/${id}`, { method: "DELETE" });
-      await refreshRounds();
-      await refreshParticipants();
-      toast("Round deleted");
+      if (!confirm("Delete this hackathon/event and all its participants?")) return;
+      try {
+        await api(`/rounds/${id}`, { method: "DELETE" });
+        await refreshRounds();
+        await refreshParticipants();
+        toast("Hackathon / Event deleted");
+      } catch (e) {
+        toast("Error: " + e.message);
+      }
     };
 
     // ---- Participants ----
     async function refreshParticipants() {
       const roundId = roundSel.value;
-      if (!roundId) { participantsBody.innerHTML = "<tr><td colspan='4'>Select a round</td></tr>"; return; }
+      if (!roundId) { participantsBody.innerHTML = "<tr><td colspan='4'>Select a hackathon / event</td></tr>"; return; }
       const list = await api(`/participants?roundId=${encodeURIComponent(roundId)}`);
       participantsBody.innerHTML = list.map(p => `
         <tr>
@@ -137,7 +145,7 @@
 
     document.getElementById("addParticipantBtn").addEventListener("click", async () => {
       const roundId = roundSel.value;
-      if (!roundId) { toast("Select a round first"); return; }
+      if (!roundId) { toast("Select a hackathon / event first"); return; }
       const identifier = document.getElementById("newIdentifier").value.trim();
       const identifierType = document.getElementById("newIdType").value;
       if (!identifier) { toast("Enter an identifier"); return; }
@@ -168,8 +176,8 @@
 
     document.getElementById("resetAllBtn").addEventListener("click", async () => {
       const roundId = roundSel.value;
-      if (!roundId) { toast("Select a round first"); return; }
-      if (!confirm("Reset all statuses in this round?")) return;
+      if (!roundId) { toast("Select a hackathon / event first"); return; }
+      if (!confirm("Reset all statuses in this hackathon/event?")) return;
       const result = await api(`/rounds/${roundId}/reset`, { method: "POST" });
       await refreshParticipants();
       toast(`Reset ${result.reset} participants`);
